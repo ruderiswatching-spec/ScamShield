@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#101820">
+    <title>ScamShield — Check before you act</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="main.js" defer></script>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="index.html">ScamShield</a>
+    </header>
+
+    <main class="page-shell">
+        <section class="intro">
+            <p class="eyebrow">A MOMENT TO CHECK CAN HELP KEEP YOU SAFE</p>
+            <h1>Is this safe?</h1>
+            <p>Paste a message or add a file. We’ll explain anything that seems concerning and what you can do next.</p>
+        </section>
+
+        <section class="checker-card" aria-labelledby="checker-heading">
+            <h2 id="checker-heading">Check a message or file</h2>
+            <p class="card-help">You can check messages, pictures, and documents.</p>
+
+            <label for="message-input">Paste the message here</label>
+            <textarea id="message-input" placeholder="Paste the message you are unsure about…" rows="6"></textarea>
+
+            <div class="upload-row">
+                <button class="add-files-button" type="button">Add a file</button>
+                <input class="sr-only" id="file-input" type="file" multiple>
+                <span class="file-size-note">Each file must be smaller than 5 MB.</span>
+            </div>
+
+            <p class="file-feedback" id="file-feedback" aria-live="polite"></p>
+            <ul class="selected-files" id="selected-files" aria-label="Files you added"></ul>
+
+            <button class="check-safety-button" type="button">Check if this is safe</button>
+            <p class="gemini-disclosure">Your text and files are sent to Google for this check. You can make 3 checks per minute and 20 per day from the same internet connection.</p>
+            <p class="rate-limit-message" id="rate-limit-message" aria-live="assertive" hidden></p>
+            <div class="analysis-loading" id="analysis-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+                <div class="loading-main">
+                    <span class="loading-spinner" aria-hidden="true"></span>
+                    <div>
+                        <p class="loading-message" id="loading-message">Checking your message now. Please wait.</p>
+                        <p class="loading-step" id="loading-step">Step 1 of 3: Getting your message ready.</p>
+                        <p class="loading-note">This may take more than a minute. Please keep this page open.</p>
+                        <p class="loading-disclaimer">The steps are a guide; the AI does not report exact progress.</p>
+                    </div>
+                </div>
+                <div class="loading-track" role="progressbar" aria-label="Safety check in progress">
+                    <span></span>
+                </div>
+            </div>
+            <p class="analysis-status" id="analysis-status" role="status" aria-live="polite"></p>
+        </section>
+
+        <p class="reminder">Not sure? Don’t click, reply, or pay until you’ve checked with someone you trust.</p>
+    </main>
+
+    <footer class="site-footer">
+        <p>Take your time. Check before you act.</p>
+    </footer>
+</body>
+</html>

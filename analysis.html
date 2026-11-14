@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#101820">
+    <title>Your safety check — ScamShield</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="analysis-page.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="index.html">ScamShield</a>
+    </header>
+
+    <main class="page-shell results-shell">
+        <button class="back-button" id="back-button" type="button">Back to the main page</button>
+        <section class="result-card" id="result-card" aria-labelledby="result-heading" hidden>
+            <p class="eyebrow">YOUR SAFETY CHECK</p>
+            <div class="result-top">
+                <div>
+                    <h1 id="result-heading">Here’s what we found</h1>
+                    <p class="result-summary" id="result-summary"></p>
+                </div>
+                <div class="risk-badge" id="risk-badge" aria-live="polite">
+                    <span>Risk level</span>
+                    <strong id="risk-level"></strong>
+                </div>
+            </div>
+            <p class="risk-description" id="risk-description"></p>
+
+            <section class="result-section" aria-labelledby="risk-reason-heading">
+                <h2 id="risk-reason-heading">Why we chose this risk level</h2>
+                <p class="risk-reason" id="risk-reason"></p>
+            </section>
+
+            <section class="result-section" aria-labelledby="signals-heading">
+                <h2 id="signals-heading">What looks concerning</h2>
+                <ul class="suspicious-signals" id="suspicious-signals"></ul>
+            </section>
+
+            <section class="result-section" aria-labelledby="next-steps-heading">
+                <h2 id="next-steps-heading">What you can do next</h2>
+                <ol class="next-steps" id="next-steps"></ol>
+            </section>
+
+            <p class="results-caution">This check can make mistakes and cannot guarantee something is safe. When in doubt, contact the organization using a phone number or website you find yourself—not the details in the message.</p>
+        </section>
+
+        <p class="page-status" id="page-status" role="status" aria-live="polite">Loading your result…</p>
+    </main>
+
+    <footer class="site-footer">
+        <p>Take your time. Check before you act.</p>
+    </footer>
+</body>
+</html>
