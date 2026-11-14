@@ -247,6 +247,6 @@ const server = createServer(async (request, response) => {
 });
 
 const port = Number(process.env.PORT) || 3000;
-server.listen(port, "127.0.0.1", () => {
-    console.log(`ScamShield is running at http://127.0.0.1:${port}`);
+server.listen(port, () => {
+    console.log(`ScamShield is running on port ${port}`);
 });
