@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { RequestRateLimiter } from "./rate-limiter.js";
 import { parseAnalysisResult } from "./analysis-result.js";
 
-const root = path.dirname(fileURLToPath(import.meta.url));
+const root = process.cwd();;
 const maxFileSize = 5 * 1024 * 1024;
 const maxRequestSize = 20 * 1024 * 1024;
 const rateLimiter = new RequestRateLimiter();
