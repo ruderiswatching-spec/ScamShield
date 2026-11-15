@@ -252,7 +252,9 @@ const staticFiles = new Map([
 async function handleRequest(request, response) {
     try {
         const url = new URL(request.url, "http://localhost");
-        if (request.method === "POST" && url.pathname.endsWith("/analyze")) {
+        const isAnalysisPath = url.pathname === "/api/analyze" ||
+            url.pathname === "/analyze";
+        if (request.method === "POST" && isAnalysisPath) {
             await analyze(request, response);
             return;
         }

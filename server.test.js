@@ -41,22 +41,24 @@ test("exports a request handler that serves the main page", async () => {
     assert.match(response.body.toString(), /ScamShield/);
 });
 
-test("routes Vercel analysis requests to the analysis handler", async () => {
-    const response = {
-        headers: {},
-        statusCode: 0,
-        writeHead(statusCode, headers) {
-            this.statusCode = statusCode;
-            this.headers = headers;
-        },
-        end() {}
-    };
+test("routes Vercel analysis requests at both supported paths", async () => {
+    for (const url of ["/api/analyze", "/analyze"]) {
+        const response = {
+            headers: {},
+            statusCode: 0,
+            writeHead(statusCode, headers) {
+                this.statusCode = statusCode;
+                this.headers = headers;
+            },
+            end() {}
+        };
 
-    await vercelHandler({
-        method: "POST",
-        url: "/api/analyze",
-        headers: { "content-type": "text/plain" }
-    }, response);
+        await vercelHandler({
+            method: "POST",
+            url,
+            headers: { "content-type": "text/plain" }
+        }, response);
 
-    assert.ok([415, 503].includes(response.statusCode));
+        assert.ok([415, 503].includes(response.statusCode), `${url} was not routed`);
+    }
 });
