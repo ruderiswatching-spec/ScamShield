@@ -11,8 +11,40 @@ const maxFileSize = 5 * 1024 * 1024;
 const maxTotalFileSize = 2.5 * 1024 * 1024;
 const maxRequestSize = 4 * 1024 * 1024;
 const rateLimiter = new RequestRateLimiter();
-const modelUrl =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
+const modelEndpoint = "https://generativelanguage.googleapis.com/v1beta/models";
+const primaryModel = "gemini-3.5-flash-lite";
+const fallbackModel = "gemini-3.1-flash-lite";
+const generationConfig = {
+    maxOutputTokens: 800,
+    responseMimeType: "application/json",
+    responseSchema: {
+        type: "OBJECT",
+        properties: {
+            riskLevel: {
+                type: "STRING",
+                enum: ["Low", "Medium", "High"]
+            },
+            summary: { type: "STRING" },
+            riskReason: { type: "STRING" },
+            signals: {
+                type: "ARRAY",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        evidence: { type: "STRING" },
+                        explanation: { type: "STRING" }
+                    },
+                    required: ["evidence", "explanation"]
+                }
+            },
+            nextSteps: {
+                type: "ARRAY",
+                items: { type: "STRING" }
+            }
+        },
+        required: ["riskLevel", "summary", "riskReason", "signals", "nextSteps"]
+    }
+};
 
 class HttpError extends Error {
     constructor(status, message) {
@@ -28,6 +60,20 @@ function sendJson(response, status, value, headers = {}) {
         ...headers
     });
     response.end(JSON.stringify(value));
+}
+
+function requestGemini(model, parts) {
+    return fetch(`${modelEndpoint}/${model}:generateContent`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": process.env.GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig
+        })
+    });
 }
 
 export async function readJsonRequest(request) {
@@ -163,57 +209,31 @@ async function analyze(request, response) {
     }
 
     let geminiResponse;
+    let activeModel = primaryModel;
     try {
-        geminiResponse = await fetch(modelUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": process.env.GEMINI_API_KEY
-            },
-            body: JSON.stringify({
-                contents: [{ parts }],
-                generationConfig: {
-                    maxOutputTokens: 800,
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            riskLevel: {
-                                type: "STRING",
-                                enum: ["Low", "Medium", "High"]
-                            },
-                            summary: { type: "STRING" },
-                            riskReason: { type: "STRING" },
-                            signals: {
-                                type: "ARRAY",
-                                items: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        evidence: { type: "STRING" },
-                                        explanation: { type: "STRING" }
-                                    },
-                                    required: ["evidence", "explanation"]
-                                }
-                            },
-                            nextSteps: {
-                                type: "ARRAY",
-                                items: { type: "STRING" }
-                            }
-                        },
-                        required: ["riskLevel", "summary", "riskReason", "signals", "nextSteps"]
-                    }
-                }
-            })
-        });
+        geminiResponse = await requestGemini(primaryModel, parts);
+        if (geminiResponse.status === 503) {
+            const overloadBody = await geminiResponse.json().catch(() => null);
+            console.warn(
+                `Gemini model ${primaryModel} is unavailable; trying ${fallbackModel}.`,
+                overloadBody?.error?.message
+            );
+            activeModel = fallbackModel;
+            geminiResponse = await requestGemini(fallbackModel, parts);
+        }
     } catch (error) {
-        console.error("Could not reach Gemini:", error);
+        console.error(`Could not reach Gemini model ${activeModel}:`, error);
         sendJson(response, 502, { error: "Could not reach Gemini. Please try again later." });
         return;
     }
 
     const resultBody = await geminiResponse.json().catch(() => null);
     if (!geminiResponse.ok) {
-        console.error("Gemini returned an error:", geminiResponse.status, resultBody?.error?.message);
+        console.error(
+            `Gemini model ${activeModel} returned an error:`,
+            geminiResponse.status,
+            resultBody?.error?.message
+        );
         sendJson(response, 502, { error: "Gemini could not analyze this request." });
         return;
     }
