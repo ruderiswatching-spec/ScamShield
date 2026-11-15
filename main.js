@@ -10,6 +10,7 @@ const loadingMessage = document.querySelector("#loading-message");
 const loadingStep = document.querySelector("#loading-step");
 const analysisStatus = document.querySelector("#analysis-status");
 const maxFileSize = 5 * 1024 * 1024;
+const maxTotalFileSize = 2.5 * 1024 * 1024;
 const selectedFiles = [];
 let requestInProgress = false;
 let cooldownUntil = 0;
@@ -106,15 +107,13 @@ fileInput.addEventListener("change", () => {
         return;
     }
 
-    // Calculate current total size of already selected files
     let currentTotalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
     
     const acceptedFiles = [];
     const rejectedFiles = [];
 
     for (const file of newFiles) {
-        // Check if individual file is under 5MB and adding it keeps total under 5MB
-        if (file.size < maxFileSize && (currentTotalSize + file.size) <= maxFileSize) {
+        if (file.size < maxFileSize && currentTotalSize + file.size <= maxTotalFileSize) {
             acceptedFiles.push(file);
             currentTotalSize += file.size;
         } else {
@@ -130,7 +129,7 @@ fileInput.addEventListener("change", () => {
         feedback.push(`${acceptedFiles.length} file${acceptedFiles.length === 1 ? "" : "s"} added.`);
     }
     if (rejectedFiles.length > 0) {
-        feedback.push(`Some files were skipped because they exceed the 5 MB total size limit.`);
+        feedback.push("Files must be smaller than 5 MB each and total no more than 2.5 MB.");
     }
     fileFeedback.textContent = feedback.join(" ");
     fileInput.value = "";

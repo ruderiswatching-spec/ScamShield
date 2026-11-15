@@ -6,9 +6,10 @@ import { fileURLToPath } from "node:url";
 import { RequestRateLimiter } from "./rate-limiter.js";
 import { parseAnalysisResult } from "./analysis-result.js";
 
-const root = process.cwd();;
+const root = path.dirname(fileURLToPath(import.meta.url));
 const maxFileSize = 5 * 1024 * 1024;
-const maxRequestSize = 20 * 1024 * 1024;
+const maxTotalFileSize = 2.5 * 1024 * 1024;
+const maxRequestSize = 4 * 1024 * 1024;
 const rateLimiter = new RequestRateLimiter();
 const modelUrl =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
@@ -29,7 +30,26 @@ function sendJson(response, status, value, headers = {}) {
     response.end(JSON.stringify(value));
 }
 
-async function readJsonRequest(request) {
+export async function readJsonRequest(request) {
+    if (request.body !== undefined) {
+        const body = request.body;
+        const serializedBody = typeof body === "string" || Buffer.isBuffer(body)
+            ? body
+            : JSON.stringify(body);
+
+        if (Buffer.byteLength(serializedBody) > maxRequestSize) {
+            throw new HttpError(413, "The request is too large.");
+        }
+        if (typeof body !== "string" && !Buffer.isBuffer(body)) {
+            return body;
+        }
+        try {
+            return JSON.parse(serializedBody.toString());
+        } catch {
+            throw new HttpError(400, "The request body must be valid JSON.");
+        }
+    }
+
     const chunks = [];
     let size = 0;
     for await (const chunk of request) {
@@ -48,6 +68,7 @@ async function readJsonRequest(request) {
 }
 
 function makeGeminiParts(text, files) {
+    let totalFileSize = 0;
     const parts = [{
         text: [
             "You help people recognize possible scams and other online safety risks.",
@@ -87,6 +108,10 @@ function makeGeminiParts(text, files) {
         if (bytes.length >= maxFileSize) {
             throw new HttpError(400, `The file "${file.name}" must be smaller than 5 MB.`);
         }
+        totalFileSize += bytes.length;
+        if (totalFileSize > maxTotalFileSize) {
+            throw new HttpError(400, "Selected files must total no more than 2.5 MB.");
+        }
         if (file.mimeType.startsWith("text/")) {
             parts.push({ text: `Contents of "${file.name}":\n${bytes.toString("utf8")}` });
         } else {
@@ -123,7 +148,10 @@ async function analyze(request, response) {
     }
 
     const parts = makeGeminiParts(body.text, body.files);
-    const clientAddress = request.socket.remoteAddress || "unknown";
+    const forwardedFor = request.headers["x-forwarded-for"];
+    const clientAddress = (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)
+        ?.split(",")[0]
+        .trim() || request.socket?.remoteAddress || "unknown";
     const rateLimitResult = rateLimiter.check(clientAddress);
     if (rateLimitResult) {
         sendJson(response, 429, {
@@ -221,10 +249,10 @@ const staticFiles = new Map([
     ["/analysis-result.js", ["analysis-result.js", "text/javascript; charset=utf-8"]]
 ]);
 
-const server = createServer(async (request, response) => {
+async function handleRequest(request, response) {
     try {
         const url = new URL(request.url, "http://localhost");
-        if (request.method === "POST" && url.pathname === "/api/analyze") {
+        if (request.method === "POST" && url.pathname.endsWith("/analyze")) {
             await analyze(request, response);
             return;
         }
@@ -244,9 +272,16 @@ const server = createServer(async (request, response) => {
         console.error("Server request failed:", error);
         sendJson(response, 500, { error: "The server could not complete the request." });
     }
-});
+}
 
-const port = Number(process.env.PORT) || 3000;
-server.listen(port, () => {
-    console.log(`ScamShield is running on port ${port}`);
-});
+export default handleRequest;
+
+const isMainModule = process.argv[1] &&
+    path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMainModule && !process.env.VERCEL) {
+    const port = Number(process.env.PORT) || 3000;
+    createServer(handleRequest).listen(port, () => {
+        console.log(`ScamShield is running on port ${port}`);
+    });
+}
